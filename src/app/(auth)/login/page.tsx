@@ -8,17 +8,37 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Eye, EyeOff, Mail, Lock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { useAuth } from "@/contexts/AuthContext"
+import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     email: "dorcasndara@gmail.com",
     password: "",
   })
+  const { signIn } = useAuth()
+  const router = useRouter()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Login attempt:", formData)
+    setLoading(true)
+    setError("")
+    
+    try {
+      const { error } = await signIn(formData.email, formData.password)
+      if (error) {
+        setError(error.message)
+      } else {
+        router.push('/dashboard')
+      }
+    } catch {
+      setError("An unexpected error occurred")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,7 +75,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right Panel - Login Form */}
-      <div className="flex-1 flex flex-col px-4 py-8 lg:px-3 lg:py-12">
+      <div className="flex-1 flex flex-col px-6 py-8 lg:px-8 lg:py-12">
         {/* Logo Header */}
         <div className="flex justify-center lg:justify-start mb-8 lg:mb-12">
           <Image
@@ -67,7 +87,7 @@ export default function LoginPage() {
         </div>
         
         <div className="flex-1 flex items-center">
-          <div className="w-full max-w-md space-y-6 lg:space-y-8 lg:pl-8">
+          <div className="w-full max-w-md space-y-6 lg:space-y-8">
             {/* Header */}
             <div className="text-left">
               <div className="space-y-2">
@@ -81,7 +101,7 @@ export default function LoginPage() {
                   className="text-base lg:text-base text-gray-600"
                   style={{ fontFamily: 'Helvetica Neue, sans-serif' }}
                 >
-                  Let's pick up where you left off. Sign in to continue learning.
+                  Let&apos;s pick up where you left off. Sign in to continue learning.
                 </p>
               </div>
             </div>
@@ -90,6 +110,11 @@ export default function LoginPage() {
             <Card className="border-0 shadow-none bg-transparent">
               <CardContent className="p-0">
                 <form onSubmit={handleSubmit} className="space-y-5 lg:space-y-6">
+                  {error && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-600">{error}</p>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label 
                       htmlFor="email" 
@@ -107,7 +132,11 @@ export default function LoginPage() {
                         value={formData.email}
                         onChange={handleChange}
                         className="h-12 pl-12"
-                        style={{ fontFamily: 'Helvetica Neue, sans-serif' }}
+                        style={{ 
+                          fontFamily: 'Helvetica Neue, sans-serif',
+                          backgroundColor: '#E7EFDB',
+                          borderColor: '#E7EFDB'
+                        }}
                         required
                       />
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -131,7 +160,11 @@ export default function LoginPage() {
                         value={formData.password}
                         onChange={handleChange}
                         className="h-12 pl-12 pr-12"
-                        style={{ fontFamily: 'Helvetica Neue, sans-serif' }}
+                        style={{ 
+                          fontFamily: 'Helvetica Neue, sans-serif',
+                          backgroundColor: '#E7EFDB',
+                          borderColor: '#E7EFDB'
+                        }}
                         required
                       />
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -165,6 +198,7 @@ export default function LoginPage() {
                   {/* Login Button */}
                   <Button
                     type="submit"
+                    disabled={loading}
                     className="w-full h-11 lg:h-12 text-white font-medium text-base lg:text-lg"
                     style={{ 
                       backgroundColor: '#D7FF94',
@@ -172,7 +206,7 @@ export default function LoginPage() {
                       fontFamily: 'Helvetica Neue, sans-serif'
                     }}
                   >
-                    Let's Go
+                    {loading ? "Signing in..." : "Let's Go"}
                   </Button>
                 </form>
               </CardContent>
@@ -184,7 +218,7 @@ export default function LoginPage() {
                 className="text-base lg:text-base text-gray-600"
                 style={{ fontFamily: 'Helvetica Neue, sans-serif' }}
               >
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <Link
                   href="/register"
                   className="text-black hover:text-black font-bold"
