@@ -47,6 +47,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
+  // Allow access to forgot password and reset password pages
+  if (request.nextUrl.pathname.startsWith('/forgot-password') || request.nextUrl.pathname.startsWith('/reset-password')) {
+    return supabaseResponse
+  }
+
   return supabaseResponse
 }
 
