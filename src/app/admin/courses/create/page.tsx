@@ -190,16 +190,25 @@ export default function CreateCoursePage() {
       const allowedDocumentTypes = ['application/pdf']
 
       let isValidType = false
-      if (bucket === 'course-thumbnails') {
+      if (bucket === 'course-assets' && path.includes('course-thumbnails')) {
         isValidType = allowedImageTypes.includes(file.type)
-      } else if (bucket === 'course-videos') {
+      } else if (bucket === 'course-assets' && path.includes('course-videos')) {
         isValidType = allowedVideoTypes.includes(file.type)
-      } else if (bucket === 'certificate-templates') {
+      } else if (bucket === 'course-assets' && path.includes('certificate-templates')) {
         isValidType = allowedDocumentTypes.includes(file.type)
       }
 
       if (!isValidType) {
-        throw new Error('Invalid file type')
+        console.log('File type validation failed:', {
+          fileType: file.type,
+          fileName: file.name,
+          bucket,
+          path,
+          allowedImageTypes,
+          allowedVideoTypes,
+          allowedDocumentTypes
+        })
+        throw new Error(`Invalid file type: ${file.type}. Allowed types: ${path.includes('course-thumbnails') ? allowedImageTypes.join(', ') : path.includes('course-videos') ? allowedVideoTypes.join(', ') : allowedDocumentTypes.join(', ')}`)
       }
 
       const { data, error } = await supabase.storage
