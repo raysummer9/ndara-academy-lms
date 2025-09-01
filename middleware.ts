@@ -52,6 +52,14 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // Admin route protection - redirect to admin login if not authenticated
+  if (request.nextUrl.pathname.startsWith('/admin') && !request.nextUrl.pathname.startsWith('/admin/login')) {
+    if (!user) {
+      const redirectUrl = new URL('/admin/login', request.url)
+      return NextResponse.redirect(redirectUrl)
+    }
+  }
+
   return supabaseResponse
 }
 
