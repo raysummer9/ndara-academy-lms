@@ -41,6 +41,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { getCourseCategories } from '@/lib/course-categories'
+import { CourseCategory } from '@/types/course-categories'
 
 // Form validation schema
 const courseFormSchema = z.object({
@@ -114,6 +116,7 @@ export default function CreateCoursePage() {
   const [savingDraft, setSavingDraft] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [courseId, setCourseId] = useState<string | null>(null)
+  const [courseCategories, setCourseCategories] = useState<CourseCategory[]>([])
   const router = useRouter()
 
   const form = useForm<CourseFormData>({
@@ -147,7 +150,17 @@ export default function CreateCoursePage() {
 
   useEffect(() => {
     checkAuth()
+    fetchCourseCategories()
   }, [])
+
+  const fetchCourseCategories = async () => {
+    try {
+      const categories = await getCourseCategories()
+      setCourseCategories(categories)
+    } catch (error) {
+      console.error('Error fetching course categories:', error)
+    }
+  }
 
   const checkAuth = async () => {
     const supabase = createClient()
@@ -820,11 +833,18 @@ export default function CreateCoursePage() {
 
                       <div className="space-y-2">
                         <Label htmlFor="category">Category *</Label>
-                        <Input
-                          id="category"
-                          {...form.register('category')}
-                          placeholder="e.g. Web Development, Design, Business"
-                        />
+                        <Select onValueChange={(value) => form.setValue('category', value)} defaultValue={form.getValues('category')}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {courseCategories.map((category) => (
+                              <SelectItem key={category.id} value={category.name}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         {form.formState.errors.category && (
                           <p className="text-sm text-red-600">{form.formState.errors.category.message}</p>
                         )}
