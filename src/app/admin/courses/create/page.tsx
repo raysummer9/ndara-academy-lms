@@ -53,6 +53,7 @@ const courseFormSchema = z.object({
   level: z.enum(['beginner', 'intermediate', 'advanced']),
   language: z.enum(['English', 'French', 'Spanish', 'German']),
   price: z.number().min(0, 'Price must be 0 or greater'),
+  discountedPrice: z.number().min(0, 'Discounted price must be 0 or greater').optional(),
   thumbnail: z.any().optional(),
   
   // Enrollments & Progress
@@ -129,6 +130,7 @@ export default function CreateCoursePage() {
       level: 'beginner',
       language: 'English',
       price: 0,
+      discountedPrice: undefined,
       enableSelfEnrollment: true,
       trackProgress: true,
       sections: [{ title: '', description: '', lessons: [] }],
@@ -357,6 +359,7 @@ export default function CreateCoursePage() {
         description: data.description,
         instructor: user?.email || '',
         price: data.price,
+        discounted_price: data.discountedPrice || null,
         duration: 'TBD',
         level: data.level,
         category: data.category,
@@ -898,7 +901,7 @@ export default function CreateCoursePage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="price">Course Price (₦) *</Label>
+                      <Label htmlFor="price">Course Price ($) *</Label>
                       <Input
                         id="price"
                         type="number"
@@ -909,6 +912,22 @@ export default function CreateCoursePage() {
                       />
                       {form.formState.errors.price && (
                         <p className="text-sm text-red-600">{form.formState.errors.price.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="discountedPrice">Discounted Price ($)</Label>
+                      <Input
+                        id="discountedPrice"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        {...form.register('discountedPrice', { valueAsNumber: true })}
+                        placeholder="0.00"
+                      />
+                      <p className="text-xs text-gray-500">Leave empty if no discount applies</p>
+                      {form.formState.errors.discountedPrice && (
+                        <p className="text-sm text-red-600">{form.formState.errors.discountedPrice.message}</p>
                       )}
                     </div>
 
