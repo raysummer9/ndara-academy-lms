@@ -52,6 +52,7 @@ const courseFormSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   level: z.enum(['beginner', 'intermediate', 'advanced']),
   language: z.enum(['English', 'French', 'Spanish', 'German']),
+  price: z.number().min(0, 'Price must be 0 or greater'),
   thumbnail: z.any().optional(),
   
   // Enrollments & Progress
@@ -127,6 +128,7 @@ export default function CreateCoursePage() {
       category: '',
       level: 'beginner',
       language: 'English',
+      price: 0,
       enableSelfEnrollment: true,
       trackProgress: true,
       sections: [{ title: '', description: '', lessons: [] }],
@@ -354,7 +356,7 @@ export default function CreateCoursePage() {
         title: data.title,
         description: data.description,
         instructor: user?.email || '',
-        price: 0,
+        price: data.price,
         duration: 'TBD',
         level: data.level,
         category: data.category,
@@ -893,6 +895,21 @@ export default function CreateCoursePage() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Course Price (₦) *</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        {...form.register('price', { valueAsNumber: true })}
+                        placeholder="0.00"
+                      />
+                      {form.formState.errors.price && (
+                        <p className="text-sm text-red-600">{form.formState.errors.price.message}</p>
+                      )}
                     </div>
 
                     {/* Thumbnail Upload */}

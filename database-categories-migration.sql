@@ -15,9 +15,9 @@ CREATE TABLE IF NOT EXISTS course_categories (
 -- Add RLS policies for course_categories table
 ALTER TABLE course_categories ENABLE ROW LEVEL SECURITY;
 
--- Policy to allow all authenticated users to read categories
-CREATE POLICY "Allow authenticated users to read course categories" ON course_categories
-  FOR SELECT USING (auth.role() = 'authenticated');
+-- Policy to allow all users (including public) to read categories
+CREATE POLICY "Allow public to read course categories" ON course_categories
+  FOR SELECT USING (true);
 
 -- Policy to allow admins to manage categories
 CREATE POLICY "Allow admins to manage course categories" ON course_categories
