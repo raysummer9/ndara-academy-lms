@@ -43,6 +43,8 @@ import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { getCourseCategories } from '@/lib/course-categories'
 import { CourseCategory } from '@/types/course-categories'
+import { getInstructorsForSelect } from '@/lib/instructors'
+import { InstructorSelectOption } from '@/types/instructors'
 
 // Form validation schema
 const courseFormSchema = z.object({
@@ -50,6 +52,7 @@ const courseFormSchema = z.object({
   title: z.string().min(1, 'Course title is required'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   category: z.string().min(1, 'Category is required'),
+  instructor_id: z.string().min(1, 'Instructor is required'),
   level: z.enum(['beginner', 'intermediate', 'advanced']),
   language: z.enum(['English', 'French', 'Spanish', 'German']),
   price: z.number().min(0, 'Price must be 0 or greater'),
@@ -119,6 +122,7 @@ export default function CreateCoursePage() {
   const [publishing, setPublishing] = useState(false)
   const [courseId, setCourseId] = useState<string | null>(null)
   const [courseCategories, setCourseCategories] = useState<CourseCategory[]>([])
+  const [instructors, setInstructors] = useState<InstructorSelectOption[]>([])
   const router = useRouter()
 
   const form = useForm<CourseFormData>({
@@ -127,6 +131,7 @@ export default function CreateCoursePage() {
       title: '',
       description: '',
       category: '',
+      instructor_id: '',
       level: 'beginner',
       language: 'English',
       price: 0,
@@ -155,6 +160,7 @@ export default function CreateCoursePage() {
   useEffect(() => {
     checkAuth()
     fetchCourseCategories()
+    fetchInstructors()
   }, [])
 
   const fetchCourseCategories = async () => {
@@ -163,6 +169,15 @@ export default function CreateCoursePage() {
       setCourseCategories(categories)
     } catch (error) {
       console.error('Error fetching course categories:', error)
+    }
+  }
+
+  const fetchInstructors = async () => {
+    try {
+      const instructorOptions = await getInstructorsForSelect()
+      setInstructors(instructorOptions)
+    } catch (error) {
+      console.error('Error fetching instructors:', error)
     }
   }
 
@@ -358,6 +373,7 @@ export default function CreateCoursePage() {
         title: data.title,
         description: data.description,
         instructor: user?.email || '',
+        instructor_id: data.instructor_id,
         price: data.price,
         discounted_price: data.discountedPrice || null,
         duration: 'TBD',
@@ -852,6 +868,30 @@ export default function CreateCoursePage() {
                         </Select>
                         {form.formState.errors.category && (
                           <p className="text-sm text-red-600">{form.formState.errors.category.message}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="instructor">Instructor *</Label>
+                        <Select onValueChange={(value) => form.setValue('instructor_id', value)} defaultValue={form.getValues('instructor_id')}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an instructor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {instructors.map((instructor) => (
+                              <SelectItem key={instructor.value} value={instructor.value}>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{instructor.label}</span>
+                                  {instructor.tagline && (
+                                    <span className="text-xs text-gray-500">{instructor.tagline}</span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {form.formState.errors.instructor_id && (
+                          <p className="text-sm text-red-600">{form.formState.errors.instructor_id.message}</p>
                         )}
                       </div>
                     </div>
