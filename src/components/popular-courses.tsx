@@ -70,8 +70,8 @@ export default function PopularCourses() {
     <section className="py-16" style={{ background: 'linear-gradient(90.21deg, #FFFFF0 0.21%, #F0FFD7 97.74%)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header Section */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-3">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
+          <div className="flex items-center justify-center md:justify-start space-x-3 mb-4 md:mb-0">
             <span 
               className="text-sm font-medium text-black uppercase tracking-wide px-3 py-1 rounded-full flex items-center"
               style={{ background: 'linear-gradient(90.21deg, #FFFFF0 0.21%, #F0FFD7 97.74%)' }}
@@ -81,13 +81,13 @@ export default function PopularCourses() {
             </span>
           </div>
           
-          <button className="px-6 py-2 border border-black text-black hover:bg-black hover:text-white transition-colors rounded-full">
+          <button className="hidden md:block px-6 py-2 border border-black text-black hover:bg-black hover:text-white transition-colors rounded-full">
             Get Started
           </button>
         </div>
 
         {/* Title */}
-        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-20 text-left">
+        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-20 text-center md:text-left">
           Our Most Popular Courses
         </h2>
 
