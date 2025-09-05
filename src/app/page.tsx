@@ -1,6 +1,7 @@
 import Hero from '@/components/hero'
 import CourseCategories from '@/components/course-categories'
 import PopularCourses from '@/components/popular-courses'
+import WhyChooseUs from '@/components/why-choose-us'
 
 export default function HomePage() {
   return (
@@ -8,6 +9,7 @@ export default function HomePage() {
       <Hero />
       <CourseCategories />
       <PopularCourses />
+      <WhyChooseUs />
     </div>
   )
 }
