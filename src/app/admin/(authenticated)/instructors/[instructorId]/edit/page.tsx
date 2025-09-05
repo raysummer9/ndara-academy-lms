@@ -87,6 +87,9 @@ export default function EditInstructorPage() {
   const loadInstructorData = async () => {
     try {
       const instructor = await getInstructorById(instructorId);
+      console.log('Loaded instructor data:', instructor);
+      console.log('Profile image URL:', instructor?.profile_image);
+      
       if (instructor) {
         setFormData({
           name: instructor.name || '',
@@ -101,7 +104,8 @@ export default function EditInstructorPage() {
             website: instructor.social_links?.website || ''
           }
         });
-        setCurrentImageUrl(instructor.image_url || '');
+        setCurrentImageUrl(instructor.profile_image || '');
+        console.log('Set current image URL to:', instructor.profile_image || '');
       } else {
         setError('Instructor not found');
       }
@@ -186,7 +190,7 @@ export default function EditInstructorPage() {
       // Clean up empty social links
       const cleanedData = {
         ...formData,
-        image_url: imageUrl,
+        profile_image: imageUrl,
         social_links: Object.fromEntries(
           Object.entries(formData.social_links).filter(([_, value]) => value && value.trim() !== '')
         )

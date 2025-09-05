@@ -55,6 +55,8 @@ export async function getInstructorById(id: string): Promise<Instructor | null> 
       return null;
     }
 
+    console.log('Raw instructor data from database:', data);
+    console.log('Profile image field:', data?.profile_image);
     return data;
   } catch (error) {
     console.error('Error in getInstructorById:', error);

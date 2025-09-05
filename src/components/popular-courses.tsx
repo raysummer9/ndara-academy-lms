@@ -76,6 +76,12 @@ export default function PopularCourses() {
 
       if (data && data.length > 0) {
         console.log('Published courses found:', data);
+        console.log('Instructor data for each course:', data.map(c => ({ 
+          courseTitle: c.title, 
+          instructor: c.instructors,
+          profile_image: c.instructors?.profile_image
+        })));
+        
         const transformedCourses = data.map(course => ({
           ...course,
           instructor: {

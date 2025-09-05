@@ -2,7 +2,7 @@ export interface Instructor {
   id: string;
   name: string;
   tagline?: string;
-  image_url?: string;
+  profile_image?: string;
   background?: string;
   bio?: string;
   email: string;

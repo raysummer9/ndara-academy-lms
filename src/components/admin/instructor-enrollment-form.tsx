@@ -82,6 +82,8 @@ export default function InstructorEnrollmentForm() {
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `instructor-profiles/${fileName}`;
 
+    console.log('Uploading file:', fileName, 'to path:', filePath);
+
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from('course-assets')
@@ -91,14 +93,18 @@ export default function InstructorEnrollmentForm() {
       });
 
     if (error) {
+      console.error('Storage upload error:', error);
       throw new Error(`Upload failed: ${error.message}`);
     }
+
+    console.log('Storage upload successful:', data);
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('course-assets')
       .getPublicUrl(filePath);
 
+    console.log('Generated public URL:', publicUrl);
     return publicUrl;
   };
 
@@ -120,30 +126,40 @@ export default function InstructorEnrollmentForm() {
         try {
           imageUrl = await uploadImage(selectedFile);
           setUploadProgress(100);
+          console.log('Image upload completed, URL:', imageUrl);
         } catch (uploadError: any) {
+          console.error('Image upload failed:', uploadError);
           throw new Error(`Image upload failed: ${uploadError.message}`);
         } finally {
           setUploading(false);
         }
+      } else {
+        console.log('No file selected for upload');
       }
       
       // Clean up empty social links
       const cleanedData = {
         ...data,
-        image_url: imageUrl,
+        profile_image: imageUrl,
         social_links: Object.fromEntries(
           Object.entries(data.social_links || {}).filter(([_, value]) => value && value.trim() !== '')
         )
       };
 
-      const { error } = await supabase
+      console.log('Data being inserted:', cleanedData);
+      console.log('Image URL:', imageUrl);
+
+      const { data: insertData, error } = await supabase
         .from('instructors')
-        .insert([cleanedData]);
+        .insert([cleanedData])
+        .select();
 
       if (error) {
+        console.error('Database insert error:', error);
         throw error;
       }
 
+      console.log('Successfully inserted instructor:', insertData);
       setSuccess(true);
       form.reset();
       setSelectedFile(null);
