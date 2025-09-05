@@ -1,100 +1,142 @@
-"use client"
+'use client'
 
-import { Course } from "@/types"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Clock, Users, Star, DollarSign } from "lucide-react"
+import { useState } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { 
+  BookOpen, 
+  Edit, 
+  Trash2, 
+  User
+} from 'lucide-react'
+import Link from 'next/link'
 
 interface CourseCardProps {
-  course: Course
-  onEnroll?: (courseId: string) => void
-  onView?: (courseId: string) => void
+  course: {
+    id: string
+    title: string
+    description: string
+    instructor: string
+    price: number
+    discounted_price?: number
+    level: string
+    category: string
+    status: 'draft' | 'published' | 'archived'
+    created_at: string
+  }
+  onDelete?: (id: string) => void
+  deleting?: string | null
 }
 
-export function CourseCard({ course, onEnroll, onView }: CourseCardProps) {
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
-  }
-
+export default function CourseCard({ course, onDelete, deleting }: CourseCardProps) {
   const formatPrice = (price: number) => {
     return price === 0 ? "Free" : `$${price}`
   }
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    })
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'published':
+        return 'bg-green-100 text-green-800'
+      case 'draft':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'archived':
+        return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(course.id)
+    }
+  }
+
   return (
-    <Card className="h-full flex flex-col">
-      <div className="aspect-video relative overflow-hidden rounded-t-lg">
-        {course.imageUrl ? (
-          <img
-            src={course.imageUrl}
-            alt={course.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <span className="text-white text-lg font-semibold">
-              {course.title.charAt(0).toUpperCase()}
-            </span>
-          </div>
-        )}
-        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 text-xs font-medium">
-          {course.level}
-        </div>
-      </div>
-      
-      <CardHeader className="flex-1">
-        <div className="flex items-center gap-2 mb-2">
-          <Avatar className="h-6 w-6">
-            <AvatarImage src={course.instructor.avatar} />
-            <AvatarFallback>{course.instructor.name.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <span className="text-sm text-muted-foreground">
-            {course.instructor.name}
+    <Card className="hover:shadow-lg transition-shadow">
+      <CardContent className="p-6 space-y-4">
+        {/* Tags Row */}
+        <div className="flex items-center space-x-2">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            {course.level}
+          </span>
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            {course.category}
+          </span>
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(course.status)}`}>
+            {course.status}
           </span>
         </div>
-        <CardTitle className="line-clamp-2">{course.title}</CardTitle>
-        <CardDescription className="line-clamp-2">
-          {course.description}
-        </CardDescription>
-      </CardHeader>
 
-      <CardContent className="flex-1">
-        <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
-          <div className="flex items-center gap-1">
-            <Clock className="h-4 w-4" />
-            <span>{formatDuration(course.duration)}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Users className="h-4 w-4" />
-            <span>{course.enrolledStudents} students</span>
-          </div>
+        {/* Icon and Course Title */}
+        <div className="flex items-center space-x-3">
+          <BookOpen className="h-6 w-6 text-blue-600 flex-shrink-0" />
+          <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
+            {course.title}
+          </h3>
         </div>
-        <div className="flex items-center gap-1 text-sm">
-          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-          <span>{course.rating.toFixed(1)}</span>
+
+        {/* Course Description */}
+        <p className="text-sm text-gray-600 line-clamp-3">
+          {course.description}
+        </p>
+
+        {/* Price - Prominent */}
+        <div className="text-lg font-bold">
+          {course.discounted_price ? (
+            <div className="flex items-center space-x-2">
+              <span className="text-green-600">${course.discounted_price}</span>
+              <span className="text-sm text-gray-500 line-through">${course.price}</span>
+            </div>
+          ) : (
+            <span className="text-gray-900">{formatPrice(course.price)}</span>
+          )}
+        </div>
+
+        {/* Instructor */}
+        <div className="flex items-center text-sm text-gray-500">
+          <User className="h-4 w-4 mr-2" />
+          <span>{course.instructor}</span>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between">
+          <div className="flex space-x-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/admin/courses/${course.id}/edit`}>
+                <Edit className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDelete}
+              disabled={deleting === course.id}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              {deleting === course.id ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+
+          {/* Date */}
+          <span className="text-xs text-gray-400">
+            {formatDate(course.created_at)}
+          </span>
         </div>
       </CardContent>
-
-      <CardFooter className="flex items-center justify-between">
-        <div className="flex items-center gap-1 font-semibold">
-          <DollarSign className="h-4 w-4" />
-          <span>{formatPrice(course.price)}</span>
-        </div>
-        <div className="flex gap-2">
-          {onView && (
-            <Button variant="outline" size="sm" onClick={() => onView(course.id)}>
-              View
-            </Button>
-          )}
-          {onEnroll && (
-            <Button size="sm" onClick={() => onEnroll(course.id)}>
-              Enroll
-            </Button>
-          )}
-        </div>
-      </CardFooter>
     </Card>
   )
 }

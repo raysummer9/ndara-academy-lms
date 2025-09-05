@@ -982,7 +982,10 @@ export default function CreateCoursePage() {
                               Upload a course thumbnail image (JPG, PNG, WebP)
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
-                              Max size: 50MB
+                              Recommended size: 353 x 250 pixels
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Max size: 5MB
                             </p>
                           </div>
                           <div>

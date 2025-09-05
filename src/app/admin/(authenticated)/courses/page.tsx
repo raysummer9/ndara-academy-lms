@@ -5,9 +5,10 @@ import { createClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Edit, Trash2, BookOpen, User, DollarSign, Calendar } from 'lucide-react';
+import { Plus, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import CourseCard from '@/components/courses/course-card';
 
 interface Course {
   id: string;
@@ -18,7 +19,7 @@ interface Course {
   discounted_price?: number;
   level: string;
   category: string;
-  status: string;
+  status: 'draft' | 'published' | 'archived';
   created_at: string;
 }
 
@@ -64,11 +65,23 @@ export default function CoursesPage() {
       const supabase = createClient();
       const { data, error } = await supabase
         .from('courses')
-        .select('*')
+        .select(`
+          *,
+          instructors (
+            name
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCourses(data || []);
+      
+      // Transform the data to include instructor name
+      const transformedCourses = (data || []).map(course => ({
+        ...course,
+        instructor: course.instructors?.name || 'No Instructor'
+      }));
+      
+      setCourses(transformedCourses);
     } catch (error) {
       console.error('Error fetching courses:', error);
     }
@@ -96,20 +109,6 @@ export default function CoursesPage() {
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(price);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
 
   if (loading) {
     return (
@@ -165,86 +164,12 @@ export default function CoursesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course) => (
-              <Card key={course.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center line-clamp-2">
-                      <BookOpen className="h-5 w-5 mr-2 text-blue-600 flex-shrink-0" />
-                      {course.title}
-                    </CardTitle>
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/admin/courses/${course.id}/edit`}>
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteCourse(course.id)}
-                        disabled={deleting === course.id}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        {deleting === course.id ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-gray-600 line-clamp-2">{course.description}</p>
-                  
-                  <div className="flex items-center text-sm text-gray-500">
-                    <User className="h-4 w-4 mr-2" />
-                    {course.instructor}
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {course.level}
-                      </span>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {course.category}
-                      </span>
-                    </div>
-                    
-                    <div className="text-right">
-                      <div className="text-sm font-medium text-gray-900">
-                        {course.discounted_price ? (
-                          <div>
-                            <span className="line-through text-gray-500">{formatPrice(course.price)}</span>
-                            <span className="ml-2 text-green-600">{formatPrice(course.discounted_price)}</span>
-                          </div>
-                        ) : (
-                          formatPrice(course.price)
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2">
-                    <span className={cn(
-                      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                      course.status === 'published'
-                        ? "bg-green-100 text-green-800"
-                        : course.status === 'draft'
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-gray-100 text-gray-800"
-                    )}>
-                      {course.status.charAt(0).toUpperCase() + course.status.slice(1)}
-                    </span>
-                    
-                    <div className="flex items-center text-xs text-gray-500">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {formatDate(course.created_at)}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <CourseCard
+                key={course.id}
+                course={course}
+                onDelete={handleDeleteCourse}
+                deleting={deleting}
+              />
             ))}
           </div>
         )}

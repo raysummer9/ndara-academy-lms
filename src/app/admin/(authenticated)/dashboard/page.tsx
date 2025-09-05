@@ -7,19 +7,16 @@ import {
   BookOpen, 
   Users, 
   Plus, 
-  Edit, 
-  Trash2, 
-  Eye, 
   LogOut,
   BarChart3,
   Settings,
-  Shield,
-  Globe
+  Shield
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import CourseCard from '@/components/courses/course-card'
 
 interface Course {
   id: string
@@ -27,6 +24,9 @@ interface Course {
   description: string
   instructor: string
   price: number
+  discounted_price?: number
+  level: string
+  category: string
   status: 'draft' | 'published' | 'archived'
   created_at: string
   students_count?: number
@@ -40,6 +40,7 @@ export default function AdminDashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [courses, setCourses] = useState<Course[]>([])
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [stats, setStats] = useState({
     totalCourses: 0,
     totalStudents: 0,
@@ -83,11 +84,21 @@ export default function AdminDashboardPage() {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('courses')
-      .select('*')
+      .select(`
+        *,
+        instructors (
+          name
+        )
+      `)
       .order('created_at', { ascending: false })
 
     if (!error && data) {
-      setCourses(data)
+      // Transform the data to include instructor name
+      const transformedCourses = data.map(course => ({
+        ...course,
+        instructor: course.instructors?.name || 'No Instructor'
+      }))
+      setCourses(transformedCourses)
     }
   }
 
@@ -134,6 +145,31 @@ export default function AdminDashboardPage() {
         return 'bg-gray-100 text-gray-800'
       default:
         return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const handleDeleteCourse = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this course?')) {
+      return
+    }
+
+    setDeleting(id)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('courses')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      // Remove from local state
+      setCourses(courses.filter(course => course.id !== id))
+    } catch (error) {
+      console.error('Error deleting course:', error)
+      alert('Failed to delete course')
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -281,61 +317,12 @@ export default function AdminDashboardPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {courses.slice(0, 6).map((course) => (
-                <Card key={course.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg">{course.title}</CardTitle>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(course.status)}`}>
-                        {course.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 line-clamp-2">{course.description}</p>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex justify-between items-center text-sm text-gray-500 mb-2">
-                      <span>Instructor: {course.instructor}</span>
-                      <span>₦{course.price.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm text-gray-500 mb-4">
-                      <span>{course.number_of_lessons || 0} lessons</span>
-                      <span className="flex items-center space-x-1">
-                        <Globe className="h-3 w-3" />
-                        <span>{course.language || 'English'}</span>
-                      </span>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        asChild
-                      >
-                        <Link href={`/admin/courses/${course.id}`}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        asChild
-                      >
-                        <Link href={`/admin/courses/${course.id}/edit`}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  onDelete={handleDeleteCourse}
+                  deleting={deleting}
+                />
               ))}
             </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -14,7 +14,9 @@ import { createClient } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { getCourseCategories } from '@/lib/course-categories'
 import { CourseCategory } from '@/types/course-categories'
-import { ArrowLeft, Save, BookOpen, Plus, X, FileText, CheckCircle } from 'lucide-react'
+import { getInstructorsForSelect } from '@/lib/instructors'
+import { InstructorSelectOption } from '@/types/instructors'
+import { ArrowLeft, Save, BookOpen, Plus, X, FileText, CheckCircle, Upload } from 'lucide-react'
 import Link from 'next/link'
 
 // Form validation schema
@@ -26,6 +28,8 @@ const courseFormSchema = z.object({
   language: z.enum(['English', 'French', 'Spanish', 'German']),
   price: z.number().min(0, 'Price must be 0 or greater'),
   discountedPrice: z.number().min(0, 'Discounted price must be 0 or greater').optional(),
+  instructor_id: z.string().min(1, 'Instructor is required'),
+  thumbnail: z.any().optional(),
   sections: z.array(z.object({
     title: z.string().min(1, 'Section title is required'),
     description: z.string().optional(),
@@ -62,7 +66,10 @@ export default function EditCoursePage() {
   const [user, setUser] = useState<any>(null)
   const [courseData, setCourseData] = useState<any>(null)
   const [courseCategories, setCourseCategories] = useState<CourseCategory[]>([])
+  const [instructors, setInstructors] = useState<InstructorSelectOption[]>([])
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const params = useParams()
 
@@ -76,6 +83,8 @@ export default function EditCoursePage() {
       language: 'English' as const,
       price: 0,
       discountedPrice: undefined,
+      instructor_id: '',
+      thumbnail: '',
       sections: [{ title: '', description: '', lessons: [] }],
       assessments: [],
     },
@@ -96,6 +105,7 @@ export default function EditCoursePage() {
     if (params.courseId) {
       checkAuth()
       fetchCourseCategories()
+      fetchInstructors()
       loadCourseData(params.courseId as string)
     }
   }, [params.courseId])
@@ -130,6 +140,15 @@ export default function EditCoursePage() {
       setCourseCategories(categories)
     } catch (error) {
       console.error('Error fetching course categories:', error)
+    }
+  }
+
+  const fetchInstructors = async () => {
+    try {
+      const instructorsData = await getInstructorsForSelect()
+      setInstructors(instructorsData)
+    } catch (error) {
+      console.error('Error fetching instructors:', error)
     }
   }
 
@@ -227,6 +246,8 @@ export default function EditCoursePage() {
           language: language,
           price: courseData.price || 0,
           discountedPrice: courseData.discounted_price || undefined,
+          instructor_id: courseData.instructor_id || '',
+          thumbnail: courseData.thumbnail_url || '',
           sections: sections,
           assessments: assessments,
         })
@@ -239,11 +260,117 @@ export default function EditCoursePage() {
     }
   }
 
+  const handleFileUpload = async (file: File, bucket: string, path: string): Promise<string | null> => {
+    try {
+      const supabase = createClient()
+      
+      // Validate file type
+      const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+      const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg']
+      const allowedDocumentTypes = ['application/pdf']
+
+      let isValidType = false
+      if (bucket === 'course-assets' && path.includes('course-thumbnails')) {
+        isValidType = allowedImageTypes.includes(file.type)
+      } else if (bucket === 'course-assets' && path.includes('course-videos')) {
+        isValidType = allowedVideoTypes.includes(file.type)
+      } else if (bucket === 'course-assets' && path.includes('course-documents')) {
+        isValidType = allowedDocumentTypes.includes(file.type)
+      }
+
+      if (!isValidType) {
+        const allowedTypes = path.includes('course-thumbnails') 
+          ? allowedImageTypes 
+          : path.includes('course-videos') 
+          ? allowedVideoTypes 
+          : allowedDocumentTypes
+        throw new Error(`Invalid file type: ${file.type}. Allowed types: ${allowedTypes.join(', ')}`)
+      }
+
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (error) {
+        throw error
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(data.path)
+
+      return publicUrl
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      throw error
+    }
+  }
+
+  const uploadThumbnail = async (file: File): Promise<string | null> => {
+    setUploading(true)
+    try {
+      const fileName = `course-thumbnails/${Date.now()}-${file.name}`
+      const url = await handleFileUpload(file, 'course-assets', fileName)
+      if (url) {
+        form.setValue('thumbnail', url)
+      }
+      return url
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleSave = async () => {
     setSaving(true)
     try {
+      // Validate form first
+      const isValid = await form.trigger()
+      if (!isValid) {
+        throw new Error('Please fix form validation errors before saving')
+      }
+
       const formData = form.getValues()
       const supabase = createClient()
+
+      // Validate form data
+      if (!formData.instructor_id || formData.instructor_id === '') {
+        throw new Error('Please select an instructor')
+      }
+
+      // Verify instructor exists
+      const { data: instructorExists, error: instructorCheckError } = await supabase
+        .from('instructors')
+        .select('id')
+        .eq('id', formData.instructor_id)
+        .single()
+
+      if (instructorCheckError || !instructorExists) {
+        throw new Error('Selected instructor does not exist')
+      }
+
+      // Handle thumbnail upload if provided
+      let thumbnailUrl = formData.thumbnail
+      if (formData.thumbnail && typeof formData.thumbnail === 'string' && formData.thumbnail.startsWith('blob:')) {
+        if (fileInputRef.current?.files?.[0]) {
+          const uploadedUrl = await uploadThumbnail(fileInputRef.current.files[0])
+          thumbnailUrl = uploadedUrl || formData.thumbnail
+        }
+      }
+
+      console.log('Updating course with data:', {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        level: formData.level,
+        language: formData.language,
+        price: formData.price,
+        discounted_price: formData.discountedPrice,
+        instructor_id: formData.instructor_id,
+        thumbnail_url: thumbnailUrl
+      })
 
       // Update course basic info
       const { error: courseError } = await supabase
@@ -256,12 +383,15 @@ export default function EditCoursePage() {
           language: formData.language,
           price: formData.price,
           discounted_price: formData.discountedPrice || null,
+          instructor_id: formData.instructor_id,
+          thumbnail_url: thumbnailUrl,
           updated_at: new Date().toISOString()
         })
         .eq('id', params.courseId)
 
       if (courseError) {
-        throw courseError
+        console.error('Course update error:', courseError)
+        throw new Error(`Failed to update course: ${courseError.message}`)
       }
 
       // Clear existing sections and lessons
@@ -524,6 +654,134 @@ export default function EditCoursePage() {
                 </Select>
                 {form.formState.errors.category && (
                   <p className="text-sm text-red-600">{form.formState.errors.category.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="instructor">Instructor *</Label>
+                <Select onValueChange={(value) => form.setValue('instructor_id', value)} defaultValue={form.getValues('instructor_id')}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an instructor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {instructors.map((instructor) => (
+                      <SelectItem key={instructor.value} value={instructor.value}>
+                        {instructor.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.formState.errors.instructor_id && (
+                  <p className="text-sm text-red-600">{form.formState.errors.instructor_id.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Thumbnail Upload */}
+            <div className="space-y-2">
+              <Label>Course Thumbnail</Label>
+              
+              {/* Hidden file input - always rendered */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    try {
+                      await uploadThumbnail(file)
+                    } catch (error) {
+                      console.error('Upload error:', error)
+                      alert('Failed to upload thumbnail. Please try again.')
+                    }
+                  }
+                  // Reset the input so the same file can be selected again
+                  e.target.value = ''
+                }}
+                className="hidden"
+              />
+              
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                {form.watch('thumbnail') ? (
+                  <div className="space-y-4">
+                    <img 
+                      src={form.watch('thumbnail')} 
+                      alt="Course thumbnail" 
+                      className="mx-auto h-32 w-auto rounded-lg object-cover"
+                    />
+                    <div>
+                      <p className="text-sm text-green-600">✓ Thumbnail uploaded successfully</p>
+                      <p className="text-xs text-gray-500">{form.watch('thumbnail')}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        console.log('Change thumbnail button clicked, using ref...')
+                        if (fileInputRef.current) {
+                          console.log('File input ref found, triggering click...')
+                          fileInputRef.current.click()
+                        } else {
+                          console.error('File input ref not found!')
+                        }
+                      }}
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mr-2" />
+                          Uploading...
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <Upload className="h-4 w-4 mr-2" />
+                          Change Thumbnail
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-600">
+                        Upload a course thumbnail image (JPG, PNG, WebP)
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Recommended size: 353 x 250 pixels
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Max size: 5MB
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        console.log('Upload thumbnail button clicked, using ref...')
+                        if (fileInputRef.current) {
+                          console.log('File input ref found, triggering click...')
+                          fileInputRef.current.click()
+                        } else {
+                          console.error('File input ref not found!')
+                        }
+                      }}
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mr-2" />
+                          Uploading...
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload Thumbnail
+                        </div>
+                      )}
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
