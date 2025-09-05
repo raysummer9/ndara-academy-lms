@@ -124,10 +124,10 @@ export default function WhyChooseUs() {
               {/* Image */}
               <div className="relative w-full max-w-[400px] h-[500px] mx-auto">
                 <Image
-                  src="/img/why-choose-us.jpg"
+                  src="/img/why-choose-us-Image.png"
                   alt="Creative professional working"
                   fill
-                  className="shadow-lg object-cover"
+                  className="object-cover scale-150"
                   style={{ 
                     borderRadius: '32px'
                   }}
